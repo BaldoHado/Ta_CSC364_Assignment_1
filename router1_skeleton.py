@@ -9,35 +9,20 @@ import glob
 
 # The purpose of this function is to set up a socket connection.
 def create_socket(host, port):
-    # 1. Create a socket.
-    ## soc = ...
-    # 2. Try connecting the socket to the host and port.
+    soc = socket.socket()
     try:
-        ## ...
+        soc.connect("127.0.0.1", 6123)
     except:
         print("Connection Error to", port)
         sys.exit()
-    # 3. Return the connected socket.
     return soc
 
 
 # The purpose of this function is to read in a CSV file.
 def read_csv(path):
-    # 1. Open the file for reading.
     table_file = open(path, "r")
-    # 2. Store each line.
     table = table_file.readlines()
-    # 3. Create an empty list to store each processed row.
-    table_list = []
-    # 4. For each line in the file:
-    ## for ...:
-        # 5. split it by the delimiter,
-        ## ...
-        # 6. remove any leading or trailing spaces in each element, and
-        ## ...
-        # 7. append the resulting list to table_list.
-        ## table_list.append(...)
-    # 8. Close the file and return table_list.
+    table_list = [[col_val.strip() for col_val in line.split(',')] for line in table]
     table_file.close()
     return table_list
 
@@ -82,29 +67,15 @@ def generate_forwarding_table_with_range(table):
 
 # The purpose of this function is to convert a string IP to its binary representation.
 def ip_to_bin(ip):
-    # 1. Split the IP into octets.
-    ## ip_octets = ...
-    # 2. Create an empty string to store each binary octet.
+    ip_octets = ip.split('.')
     ip_bin_string = ""
-    # 3. Traverse the IP, octet by octet,
-    ## for ...:
-        # 4. and convert the octet to an int,
-        ## int_octet = ...
-        # 5. convert the decimal int to binary,
-        ## bin_octet = ...
-        # 6. convert the binary to string and remove the "0b" at the beginning of the string,
-        ## bin_octet_string = ...
-        # 7. while the sting representation of the binary is not 8 chars long,
-        # then add 0s to the beginning of the string until it is 8 chars long
-        # (needs to be an octet because we're working with IP addresses).
-        ## while ...:
-            ## bin_octet_string = ...
-        # 8. Finally, append the octet to ip_bin_string.
-        ## ip_bin_string = ...
-    # 9. Once the entire string version of the binary IP is created, convert it into an actual binary int.
-    ## ip_int = ...
-    # 10. Return the binary representation of this int.
-    return bin(ip_int)
+    for octet in ip_octets: 
+        int_octet = int(octet)
+        bin_octet = bin(int_octet)
+        bin_octet_string = f"{bin_octet}"[2:]
+        bin_octet_string = ("0" * (8-len(bin_octet_string))) + bin_octet_string
+        ip_bin_string += bin_octet_string
+    return int(ip_bin_string, 2)
 
 
 # The purpose of this function is to find the range of IPs inside a given a destination IP address/subnet mask pair.
@@ -122,6 +93,12 @@ def find_ip_range(network_dst, netmask):
     # to get the maximum IP address in the range.
     ## max_ip = ...
     # 4. Return a list containing the minimum and maximum IP in the range.
+
+    min_ip = network_dst & netmask
+    ip_range = bit_not(netmask) 
+    max_ip = min_ip | ip_range
+
+
     return [min_ip, max_ip]
 
 
@@ -132,10 +109,12 @@ def bit_not(n, numbits=32):
 
 # The purpose of this function is to write packets/payload to file.
 def write_to_file(path, packet_to_write, send_to_router=None):
+
+
     # 1. Open the output file for appending.
     out_file = open(path, "a")
     # 2. If this router is not sending, then just append the packet to the output file.
-    ## if ...:
+    if not send_to_router:
         out_file.write(packet_to_write + "\n")
     # 3. Else if this router is sending, then append the intended recipient, along with the packet, to the output file.
     else:

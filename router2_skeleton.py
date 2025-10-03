@@ -3,6 +3,7 @@ import sys
 import traceback
 from threading import Thread
 
+SERVER_PORT_NUM = 6123
 
 # Helper Functions
 
@@ -172,16 +173,19 @@ def start_server():
     ## host = ...
     ## port = ...
     ## soc = ...
+
+    soc = socket.socket()
+
     soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     print("Socket created")
     # 2. Try binding the socket to the appropriate host and receiving port (based on the network topology diagram).
     try:
-        ## ...
+        soc.bind('127.0.0.1', SERVER_PORT_NUM)
     except:
         print("Bind failed. Error : " + str(sys.exc_info()))
         sys.exit()
     # 3. Set the socket to listen.
-    ## ...
+    soc.listen()
     print("Socket now listening")
 
     # 4. Read in and store the forwarding table.
