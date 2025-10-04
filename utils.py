@@ -10,7 +10,7 @@ HOST = "127.0.0.1"
 def create_socket(host, port):
     soc = socket.socket()
     try:
-        soc.connect(host, port)
+        soc.connect((host, port))
     except:
         print("Connection Error to", port)
         sys.exit()
@@ -24,7 +24,6 @@ def read_csv(path):
     table_list = [[col_val.strip() for col_val in line.split(',')] for line in table]
     table_file.close()
     return table_list
-
 
 # The purpose of this function is to find the default port
 # when no match is found in the forwarding table for a packet's destination IP.
@@ -48,13 +47,15 @@ def generate_forwarding_table_with_range(table):
             netmask_bin = ip_to_bin(netmask_string)
 
             ip_range = find_ip_range(network_dst_bin, netmask_bin)
-            new_row = [ip_range, row[0]]
+            new_row = (ip_range, row[3])
             new_table.append(new_row)
     return new_table
 
 
 # The purpose of this function is to convert a string IP to its binary representation.
 def ip_to_bin(ip):
+    ip_bin_string = ""
+
     ip_octets = ip.split('.')
     ip_bin_string = ""
     for octet in ip_octets: 
@@ -63,6 +64,7 @@ def ip_to_bin(ip):
         bin_octet_string = f"{bin_octet}"[2:]
         bin_octet_string = ("0" * (8-len(bin_octet_string))) + bin_octet_string
         ip_bin_string += bin_octet_string
+    
     return int(ip_bin_string, 2)
 
 
@@ -92,3 +94,54 @@ def write_to_file(path, packet_to_write, send_to_router=None):
         out_file.write(packet_to_write + " " + "to Router " + send_to_router + "\n")
     # 4. Close the output file.
     out_file.close()
+
+
+# The purpose of this function is to receive and process an incoming packet.
+def receive_packet(connection, max_buffer_size):
+    # 1. Receive the packet from the socket.
+    received_packet = connection.recv(max_buffer_size)
+    # 2. If the packet size is larger than the max_buffer_size, print a debugging message
+    packet_size = sys.getsizeof(received_packet)
+    if packet_size > max_buffer_size:
+        print("The packet size is greater than expected", packet_size)
+    # 3. Decode the packet and strip any trailing whitespace.
+    decoded_packet = received_packet.decode()
+    # 3. Append the packet to received_by_router_2.txt.
+    print("received packet", decoded_packet)
+    write_to_file("./output/received_by_router_2.txt", decoded_packet)
+    ## ...
+    # 4. Split the packet by the delimiter.
+    packet = decoded_packet.split(',')
+    # 5. Return the list representation of the packet.
+    return packet
+
+def process_packet(packet, default_gateway_port, forwarding_table_with_range, current_router_num, target_port_mappings):
+    sourceIP = packet[0]
+    destinationIP = packet[1]
+    payload = packet[2]
+    ttl = packet[3]
+    new_ttl = str(int(ttl)-1)
+    new_packet = ','.join([sourceIP, destinationIP, payload, new_ttl])
+    destinationIP_int = ip_to_bin(destinationIP)
+    port_to_send = default_gateway_port
+    for ip_range, target_port in forwarding_table_with_range:
+        if ip_range[0] <= destinationIP_int <= ip_range[1]:
+            port_to_send = target_port
+
+    
+    if port_to_send == "127.0.0.1":
+        print("OUT:", payload)
+        write_to_file(f"./output/out_router_{current_router_num}.txt", payload)
+    elif new_ttl == "0":
+        print("DISCARD:", new_packet)
+        write_to_file(f"./output/discarded_by_router_{current_router_num}.txt", new_packet)
+    else:
+        for port_num, router_num in target_port_mappings:
+            if port_to_send == port_num: 
+                print(f"sending packet {new_packet} to Router {router_num}")
+                write_to_file(f"./output/sent_by_router_{current_router_num}.txt", new_packet, router_num)
+                # port_mapping[2].send(new_packet.encode())
+                break
+        else:
+            print("DISCARD:", new_packet)
+            write_to_file(f"./output/discarded_by_router_{current_router_num}.txt", new_packet)
