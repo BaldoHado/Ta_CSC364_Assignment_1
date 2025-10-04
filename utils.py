@@ -136,11 +136,11 @@ def process_packet(packet, default_gateway_port, forwarding_table_with_range, cu
         print("DISCARD:", new_packet)
         write_to_file(f"./output/discarded_by_router_{current_router_num}.txt", new_packet)
     else:
-        for port_num, router_num in target_port_mappings:
+        for port_num, router_num, router_socket in target_port_mappings:
             if port_to_send == port_num: 
                 print(f"sending packet {new_packet} to Router {router_num}")
                 write_to_file(f"./output/sent_by_router_{current_router_num}.txt", new_packet, router_num)
-                # port_mapping[2].send(new_packet.encode())
+                router_socket.send(new_packet.encode())
                 break
         else:
             print("DISCARD:", new_packet)
