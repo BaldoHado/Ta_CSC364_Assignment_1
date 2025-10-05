@@ -97,38 +97,43 @@ def write_to_file(path, packet_to_write, send_to_router=None):
 
 
 # The purpose of this function is to receive and process an incoming packet.
-def receive_packet(connection, max_buffer_size):
+def receive_packet(connection, max_buffer_size, router_num):
     # 1. Receive the packet from the socket.
-    received_packet = connection.recv(max_buffer_size)
+    received_packet = connection.recv(max_buffer_size).rstrip(b'\x00')
     # 2. If the packet size is larger than the max_buffer_size, print a debugging message
     packet_size = sys.getsizeof(received_packet)
     if packet_size > max_buffer_size:
         print("The packet size is greater than expected", packet_size)
     # 3. Decode the packet and strip any trailing whitespace.
     decoded_packet = received_packet.decode()
-    # 3. Append the packet to received_by_router_2.txt.
+
     print("received packet", decoded_packet)
-    write_to_file("./output/received_by_router_2.txt", decoded_packet)
-    ## ...
+    if decoded_packet == "":
+        return []
+    write_to_file(f"./output/received_by_router_{router_num}.txt", decoded_packet)
     # 4. Split the packet by the delimiter.
     packet = decoded_packet.split(',')
+    print("split packet ", packet)
     # 5. Return the list representation of the packet.
     return packet
 
-def process_packet(packet, default_gateway_port, forwarding_table_with_range, current_router_num, target_port_mappings):
+def process_packet(packet, default_gateway_port, forwarding_table_with_range, current_router_num, target_port_mappings, max_buffer_size=5120):
     sourceIP = packet[0]
     destinationIP = packet[1]
     payload = packet[2]
     ttl = packet[3]
     new_ttl = str(int(ttl)-1)
     new_packet = ','.join([sourceIP, destinationIP, payload, new_ttl])
+    print(f"sending packet {new_packet} encoded {new_packet.encode()}")
     destinationIP_int = ip_to_bin(destinationIP)
-    port_to_send = default_gateway_port
+    port_to_send = None
     for ip_range, target_port in forwarding_table_with_range:
         if ip_range[0] <= destinationIP_int <= ip_range[1]:
             port_to_send = target_port
 
-    
+    if not port_to_send:
+        port_to_send = default_gateway_port
+
     if port_to_send == "127.0.0.1":
         print("OUT:", payload)
         write_to_file(f"./output/out_router_{current_router_num}.txt", payload)
@@ -140,7 +145,9 @@ def process_packet(packet, default_gateway_port, forwarding_table_with_range, cu
             if port_to_send == port_num: 
                 print(f"sending packet {new_packet} to Router {router_num}")
                 write_to_file(f"./output/sent_by_router_{current_router_num}.txt", new_packet, router_num)
-                router_socket.send(new_packet.encode())
+                encoded_packet = new_packet.encode()
+                padded_packet = encoded_packet.ljust(max_buffer_size, b'\x00')
+                router_socket.send(padded_packet)
                 break
         else:
             print("DISCARD:", new_packet)

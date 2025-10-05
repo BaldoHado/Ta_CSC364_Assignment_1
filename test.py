@@ -1,6 +1,6 @@
 from utils import *
 
-table = read_csv('./input/router_1_table.csv')
+table = read_csv('./input/router_2_table.csv')
 print(f"Read CSV Table: {table}")
 
 print(f"Default Gateway: {find_default_gateway(table)}")

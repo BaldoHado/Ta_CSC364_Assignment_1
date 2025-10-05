@@ -42,7 +42,7 @@ def start_server():
     print("Socket now listening")
 
     # 4. Read in and store the forwarding table.
-    forwarding_table = read_csv("./input/router_2_table.csv")
+    forwarding_table = read_csv(f"./input/router_{ROUTER_NUM}_table.csv")
     # 5. Store the default gateway port.
     default_gateway_port = find_default_gateway(forwarding_table)
     # 4. Generate a new forwarding table that includes the IP ranges for matching against destination IPS.
@@ -67,7 +67,6 @@ def start_server():
                 ),
             )
             thread.start()
-            thread.join()
         except:
             print("Thread did not start.")
             traceback.print_exc()
@@ -83,7 +82,7 @@ def processing_thread(
     max_buffer_size=5120,
 ):
     while True:
-        packet = receive_packet(connection, max_buffer_size)
+        packet = receive_packet(connection, max_buffer_size, ROUTER_NUM)
 
         if packet == []:
             break
